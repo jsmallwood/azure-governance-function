@@ -15,11 +15,5 @@
       "Host.Results": "Trace",
       "Function": "Trace"
     }
-  },
-  "retry": {
-    "strategy": "exponentialBackoff",
-    "maxRetryCount": 5,
-    "minimumInterval": "00:00:03" ,
-    "maximumInterval": "00:00:15" 
   }
 }

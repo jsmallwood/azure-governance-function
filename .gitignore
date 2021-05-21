@@ -129,6 +129,10 @@ appsettings.json
 local.settings.json
 .python_packages
 sample.dat
+create-azure-budgets
+deploy
+deploy-eventgrid-to-subscriptions
+
 
 # VS Code
 .vscode

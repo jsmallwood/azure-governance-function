@@ -32,7 +32,7 @@ if($eventGridEvent.data.resourceUri -match 'resourceGroups')
 If ($resource)
 {
     Write-Output "Resource was retrieved"
-
+    Write-Output "ResourceId: $($resource.ResourceId)"
     if($resource.Tags.ContainsKey("$($CreatedByTagName)") -eq $false)
     {
         try {
