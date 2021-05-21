@@ -1,5 +1,5 @@
 .git*
 .vscode
 .code-workspace
-.deploy
+deploy
 local.settings.json
