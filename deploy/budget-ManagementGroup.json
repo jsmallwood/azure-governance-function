@@ -1,0 +1,150 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-08-01/managementGroupDeploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "tagName": {
+            "type": "string",
+            "defaultValue": "CostCenter",
+            "metadata": {
+                "description": "The Name or Key of the Tag."
+            }
+        },
+        "tagValue": {
+            "type": "string",
+            "defaultValue": "0001",
+            "metadata": {
+                "description": "The Value of the Tag."
+            }
+        },
+        "amount": {
+            "type": "String",
+            "defaultValue": "1000",
+            "metadata": {
+                "description": "The total amount of cost or usage to track with the budget"
+            }
+        },
+        "category": {
+            "type": "String",
+            "defaultValue": "Cost",
+            "allowedValues": [
+                "Cost",
+                "Usage"
+            ],
+            "metadata": {
+                "description": "The category of the budget, whether the budget tracks cost or usage."
+            }
+        },
+        "timeGrain": {
+            "type": "String",
+            "defaultValue": "Monthly",
+            "allowedValues": [
+                "Monthly",
+                "Quarterly",
+                "Annually",
+                "BillingMonth",
+                "BillingQuarter",
+                "BillingAnnual"
+            ],
+            "metadata": {
+                "description": "The time covered by a budget. Tracking of the amount will be reset based on the time grain."
+            }
+        },
+        "startDate": {
+            "type": "string",
+            "defaultValue": "[concat(utcNow('MM'), '/01/', utcNow('yyyy'))]",
+            "metadata": {
+                "description": "The start date must be first of the month and should be less than the end date. Budget start date must be on or after June 1, 2017."
+            }
+        },
+        "endDate": {
+            "type": "string",
+            "defaultValue": "[if(equals(parameters('tagName'), 'CostCenter'), concat(utcNow('MM'), '/01/', dateTimeAdd(utcNow('d'), 'P3Y', 'yyyy')), concat(utcNow('MM'), '/01/', dateTimeAdd(utcNow('d'), 'P1Y', 'yyyy')))]",
+            "metadata": {
+                "description": "Future start date should not be more than twelve months. Past start date should be selected within the timegrain period."
+            }
+        },
+        "firstThreshold": {
+            "type": "String",
+            "defaultValue": "90",
+            "metadata": {
+                "description": "Threshold value associated with a notification. Notification is sent when the cost exceeded the threshold. It is always percent and has to be between 0 and 1000."
+            }
+        },
+        "secondThreshold": {
+            "type": "String",
+            "defaultValue": "100",
+            "metadata": {
+                "description": "Threshold value associated with a notification. Notification is sent when the cost exceeded the threshold. It is always percent and has to be between 0 and 1000."
+            }
+        },
+        "thresholdType": {
+            "type": "String",
+            "defaultValue": "Actual",
+            "allowedValues": [
+                "Actual",
+                "Usage"
+            ],
+            "metadata": {
+                "description": "Threshold value associated with a notification. Notification is sent when the cost exceeded the threshold. It is always percent and has to be between 0 and 1000."
+            }
+        },
+        "contactEmails": {
+            "type": "Array",
+            "defaultValue": [],
+            "metadata": {
+                "description": "The list of email addresses, in an array, to send the budget notification to when the threshold is exceeded."
+            }
+        }
+    },
+    "variables": {
+        "budget-name": "[concat('budget-', parameters('tagName'), '-', parameters('tagValue'))]"
+    },
+    "resources": [
+        {
+            "name": "[variables('budget-name')]",
+            "type": "Microsoft.Consumption/budgets",
+            "apiVersion": "2019-10-01",
+            "properties": {
+                "category": "[parameters('category')]",
+                "amount": "[parameters('amount')]",
+                "timeGrain": "[parameters('timeGrain')]",
+                "timePeriod": {
+                    "startDate": "[parameters('startDate')]",
+                    "endDate": "[parameters('endDate')]"
+                },
+                "filter": {
+                    "tags": {
+                        "name": "[parameters('tagName')]",
+                        "operator": "In",
+                        "values": [
+                            "[parameters('tagValue')]"
+                        ]
+                    }
+                },
+                "notifications": {
+                    "NotificationForExceededBudget1": {
+                        "enabled": true,
+                        "operator": "GreaterThan",
+                        "threshold": "[parameters('firstThreshold')]",
+                        "contactEmails": "[parameters('contactEmails')]",
+                        "thresholdType": "[parameters('thresholdType')]"
+                    },
+                    "NotificationForExceededBudget2": {
+                        "enabled": true,
+                        "operator": "GreaterThan",
+                        "threshold": "[parameters('secondThreshold')]",
+                        "contactEmails": "[parameters('contactEmails')]",
+                        "thresholdType": "[parameters('thresholdType')]"
+                    },
+                    "NotificationForForecastedBudget": {
+                        "enabled": true,
+                        "operator": "GreaterThan",
+                        "threshold": "120",
+                        "contactEmails": "[parameters('contactEmails')]",
+                        "thresholdType": "Forecasted"
+                    }
+                }
+            }
+        }
+    ]
+}

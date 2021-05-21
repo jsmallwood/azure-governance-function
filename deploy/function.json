@@ -1,0 +1,137 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "functionName": {
+            "type": "string",
+            "metadata": {
+                "description": "The name of the Azure Function that will recieve the Event Grid Topic."
+            },
+            "defaultValue": "func-governance-pwsh"
+        },
+        "functionAppRepo": {
+            "type": "string",
+            "metadata": {
+                "description": ""
+            },
+            "defaultValue": "https://github.com/jsmallwood/azure-function-governance.git"
+        },
+        "planName": {
+            "type": "string",
+            "metadata": {
+                "description": "The name of the App Service Plan."
+            },
+            "defaultValue": ""
+        }
+    },
+    "functions": [],
+    "variables": {
+        "functionName": "[toLower(if(contains(parameters('functionName'), 'func-'), parameters('functionName'), concat('func-', parameters('functionName'))))]",
+        "planName": "[toLower(if(equals(parameters('planName'), ''), concat('plan-', variables('functionName')), parameters('planName')))]",
+        "storageAccountName": "[toLower(concat('st', trim(resourceGroup().location), uniqueString(subscription().subscriptionId)))]",
+        "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+        "branch": "main"
+    },
+    "resources": [
+        {
+            "name": "[variables('planName')]",
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2020-12-01",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "Y1",
+                "capacity": 1
+            },
+            "properties": {
+                "name": "[variables('planName')]"
+            }
+        },
+        {
+            "name": "[variables('storageAccountName')]",
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2019-06-01",
+            "location": "[resourceGroup().location]",
+            "kind": "StorageV2",
+            "sku": {
+                "name": "Standard_LRS",
+                "tier": "Standard"
+            }
+        },
+        {
+            "name": "[variables('functionName')]",
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2020-12-01",
+            "location": "[resourceGroup().location]",
+            "kind": "functionapp",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('planName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+            ],
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('planName'))]",
+                "siteConfig": {
+                    "appSettings": [            {
+                "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountid'),'2019-06-01').keys[0].value)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[toLower(variables('functionName'))]"
+                        },
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountid'),'2019-06-01').keys[0].value)]"
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~3"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "powershell"
+                        }
+                    ]
+                }
+            },
+            "resources": [
+                {
+                    "name": "web",
+                    "type": "sourcecontrols",
+                    "apiVersion": "2018-11-01",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites', variables('functionName'))]"
+                    ],
+                    "properties": {
+                        "RepoUrl": "[parameters('functionAppRepo')]",
+                        "branch": "[variables('branch')]",
+                        "IsManualIntegration": true
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.Web/sites/config",
+            "apiVersion": "2020-12-01",
+            "name": "[concat(variables('functionName'), '/web')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', variables('functionName'))]"
+            ],
+            "properties": {
+                "powerShellVersion": "~7"
+            }
+        }
+    ],
+    "outputs": {
+        "systemAssignedIdentityPrincipalId": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.Web/sites', variables('functionName')), '2020-09-01', 'Full').identity.principalId]"
+        },
+        "functionName": {
+            "type": "string",
+            "value": "[variables('functionName')]"
+        }
+    }
+}
