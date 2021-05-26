@@ -11,40 +11,38 @@ if ($eventGridEvent.data.authorization.evidence.principalType -eq 'ServicePrinci
         $createdBy = $eventGridEvent.data.authorization.evidence.principalId
     }
 } else {
-    if ($eventGridEvent.data.claims.'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress' -match "strin") {
-        $createdBy = $eventGridEvent.data.claims.'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
-    } elseif ($eventGridEvent.data.claims.'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name' -match "[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+") {
+
+    if ( ($eventGridEvent.data.claims.'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name') -and ($eventGridEvent.data.claims.'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name' -match "[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+") ) {
         $createdBy = $eventGridEvent.data.claims.'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'
-    } elseif ($eventGridEvent.data.claims.'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn' -match "[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+") {
+    } elseif ( ($eventGridEvent.data.claims.'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn') -and ( $eventGridEvent.data.claims.'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn' -match "[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+") ) {
         $createdBy = $eventGridEvent.data.claims.'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn'
+    } elseif ( ($eventGridEvent.data.claims.'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress') -and ($eventGridEvent.data.claims.'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress' -match "[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+") ) {
+        $createdBy = $eventGridEvent.data.claims.'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
     } else {
         $createdBy = $eventGridEvent.data.claims.name
     }
 }
 
-if($eventGridEvent.data.resourceUri -match 'resourceGroups')
-{
-    $resource = (Get-AzResourceGroup | Where {$_.ResourceGroupName -eq $eventGridEvent.data.resourceUri.Split('/')[4] })
-} else {
-    $resource = Get-AzResource -ResourceId "$($eventGridEvent.data.resourceUri)"
-}
+Write-Output "CreatedBy: $($createdBy)"
+Write-Output "CreatedByTagName: $($CreatedByTagName)"
+Write-Output "ResourceUri: $($eventGridEvent.data.resourceUri)"
 
-If ($resource)
-{
-    Write-Output "Resource was retrieved"
-    Write-Output "ResourceId: $($resource.ResourceId)"
-    if($resource.Tags.ContainsKey("$($CreatedByTagName)") -eq $false)
-    {
-        try {
-            New-AzTag -ResourceId $resource.ResourceId -Tag @{"$($CreatedByTagName)" = $createdBy} -ErrorAction Stop
-            Write-Output "Resource: $($resource.resourceId) updated."
-        } Catch {
-            Write-Error "Encountered error writing tag, may be a resource that does not support tags."
-        }
+try {
+    $objTags = (Get-AzTag -ResourceId $eventGridEvent.data.resourceUri -ErrorAction Stop).Properties.TagsProperty
+
+    Write-Output "Resource Tags were retrieved"
+
+    if ( $objTags.Count -eq 0 ) {
+        Write-Output "Resource does not have any tags"
+        Update-AzTag -Operation Merge -ResourceId $eventGridEvent.data.resourceUri -Tag @{"$($CreatedByTagName)" = "$($createdBy)"} -ErrorAction Stop
+        Write-Output "Resource was Tagged."
+    } elseif ( !($objTags.Keys.Contains($CreatedByTagName)) ) {
+        Write-Output "Resource does not have the $($CreatedByTagName) tag."
+        Update-AzTag -Operation Merge -ResourceId $eventGridEvent.data.resourceUri -Tag @{"$($CreatedByTagName)" = "$($createdBy)"} -ErrorAction Stop
+        Write-Output "Resource was Tagged."
     } else {
-        Write-Information "Resource: $($resource.ResourceId) was not updated."
+        Write-Output "Tag exists"
     }
-}
-else {
-    Write-Output 'Excluded resource type'
+} catch {
+    Write-Error $_
 }
