@@ -17,15 +17,11 @@ if ($env:MSI_SECRET -and (Get-Module -ListAvailable Az.Accounts)) {
     Connect-AzAccount -Identity -Verbose
 }
 
-#Import-Module -Name Az.Resources
-#Import-Module -Name Az.EventGrid
-
-
 # Uncomment the next line to enable legacy AzureRm alias in Azure PowerShell.
 # Enable-AzureRmAlias
 
 # You can also define functions or aliases that can be referenced in any of your PowerShell functions.
 
 # Get path to the 64bit version of PowerShell and set an environment variable so it can be used in functions
-#$64bitPowerShellPath = Get-ChildItem -Path $Env:Windir\WinSxS -Filter PowerShell.exe -Recurse -ErrorAction SilentlyContinue | Where-Object {$_.FullName -match "amd64"}
-#$env:64bitPowerShellPath=$64bitPowerShellPath.VersionInfo.FileName
+$64bitPowerShellPath = Get-ChildItem -Path $Env:Windir\WinSxS -Filter PowerShell.exe -Recurse -ErrorAction SilentlyContinue | Where-Object {$_.FullName -match "amd64"}
+$env:64bitPowerShellPath=$64bitPowerShellPath.VersionInfo.FileName
