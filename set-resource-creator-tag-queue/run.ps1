@@ -1,11 +1,8 @@
 param([System.Collections.Hashtable] $QueueItem, $TriggerMetadata)
+
 Write-Output "Queue Item Received"
+
 if (!($env:CREATED_BY_TAG_NAME)) { $CreatedByTagName = 'CreatedBy' } else { $CreatedByTagName = $env:CREATED_BY_TAG_NAME }
-
-
-
-Write-Output "CreatedByTagName: $($CreatedByTagName)"
-Write-Output $QueueItem.data.resourceUri
 
 if ($QueueItem.data.authorization.evidence.principalType -eq 'ServicePrincipal')
 {
@@ -27,16 +24,17 @@ if ($QueueItem.data.authorization.evidence.principalType -eq 'ServicePrincipal')
     }
 }
 
-Write-Output "CreatedBy: $($createdBy)"
-Write-Output "CreatedByTagName: $($CreatedByTagName)"
-Write-Output "ResourceUri: $($QueueItem.data.resourceUri)"
-
 trap {
     if ((Get-AzContext).Subscription.Id -ne $QueueItem.data.subscriptionId)
     {
         Get-AzSubscription -SubscriptionId $QueueItem.data.subscriptionId -ErrorAction Stop | Set-AzContext
     }
 }
+
+Write-Output "CreatedByTagName: $($CreatedByTagName)"
+Write-Output "CreatedBy: $($createdBy)"
+Write-Output "CreatedByTagName: $($CreatedByTagName)"
+Write-Output "ResourceUri: $($QueueItem.data.resourceUri)"
 
 try {
     $objTags = (Get-AzTag -ResourceId $QueueItem.data.resourceUri -ErrorAction Stop).Properties.TagsProperty
