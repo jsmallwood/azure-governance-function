@@ -31,6 +31,10 @@ Write-Output "CreatedBy: $($createdBy)"
 Write-Output "CreatedByTagName: $($CreatedByTagName)"
 Write-Output "ResourceUri: $($QueueItem.data.resourceUri)"
 
+trap {
+    Get-AzSubscription -SubscriptionId $QueueItem.data.subscriptionId -ErrorAction Stop | Set-AzContext
+}
+
 try {
     $objTags = (Get-AzTag -ResourceId $QueueItem.data.resourceUri -ErrorAction Stop).Properties.TagsProperty
 
