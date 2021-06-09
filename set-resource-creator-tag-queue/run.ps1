@@ -32,7 +32,10 @@ Write-Output "CreatedByTagName: $($CreatedByTagName)"
 Write-Output "ResourceUri: $($QueueItem.data.resourceUri)"
 
 trap {
-    Get-AzSubscription -SubscriptionId $QueueItem.data.subscriptionId -ErrorAction Stop | Set-AzContext
+    if ((Get-AzContext).Subscription.Id -ne $QueueItem.data.subscriptionId)
+    {
+        Get-AzSubscription -SubscriptionId $QueueItem.data.subscriptionId -ErrorAction Stop | Set-AzContext
+    }
 }
 
 try {
